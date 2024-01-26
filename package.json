@@ -10,7 +10,7 @@
   "scripts": {
     "build": "tsc",
     "link": "yarn link --global",
-    "permissions": "chmod +x ~/.yarn/bin/jst",
+    "permissions": "chmod +x dist/index.js",
     "autocomplete": "jst .zshrc >> ~/.zshrc",
     "setup": "yarn build && yarn run link && yarn run permissions && yarn run autocomplete",
     "test": "echo \"Error: no test specified\" && exit 1"
