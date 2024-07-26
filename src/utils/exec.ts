@@ -5,6 +5,7 @@ import { ExecError } from "./errors";
 interface CommandOptions {
   noecho: boolean;
   quiet: boolean;
+  dry: boolean;
 }
 export function commandExec(
   command: string,
@@ -13,6 +14,9 @@ export function commandExec(
   const results: string[] = [];
   return new Promise((resolve, reject) => {
     options.noecho || console.log(chalk.green(command));
+    if (options.dry) {
+      return [];
+    }
     const process = exec(command);
     process.stdout?.on("data", (data) => {
       results.push(data);
