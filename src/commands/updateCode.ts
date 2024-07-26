@@ -55,7 +55,7 @@ async function build(build: string): Promise<void> {
   switch (build) {
     case "brazil":
       console.log("building");
-      await commandExec("brazil-build");
+      await commandExec("brazil-build release");
       break;
     case "npm":
       console.log("building");
