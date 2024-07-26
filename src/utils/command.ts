@@ -1,13 +1,15 @@
-import { toKebabCase } from './string/to-kebab-case';
-import yargs, { ArgumentsCamelCase, Options } from 'yargs';
-import { Newable } from './newable';
-import { setStage, stageOption } from './stage';
-import { MissingRequiredPositionalArg } from './errors';
+import { toKebabCase } from "./string/to-kebab-case";
+import yargs, { ArgumentsCamelCase, Options } from "yargs";
+import { Newable } from "./newable";
+import { setStage, stageOption } from "./stage";
+import { MissingRequiredPositionalArg } from "./errors";
 
-export type ArgsOf<T extends Command> = ArgumentsCamelCase<Record<keyof ReturnType<T['builder']>, string>>
+export type ArgsOf<T extends Command> = ArgumentsCamelCase<
+  Record<keyof ReturnType<T["builder"]>, string>
+>;
 export type Result = void | string | number;
 export abstract class Command {
-  private args: ArgumentsCamelCase|null = null;
+  private args: ArgumentsCamelCase | null = null;
   get name() {
     return toKebabCase(this.constructor.name);
   }
@@ -18,17 +20,17 @@ export abstract class Command {
 
   async realHandler(args: ArgumentsCamelCase): Promise<void> {
     this.args = args;
-    if (this.builder()['stage'] === stageOption) {
+    if (this.builder()["stage"] === stageOption) {
       //@ts-ignore
-      setStage(args.stage || 'beta');
+      setStage(args.stage || "beta");
     }
     try {
       const result = await this.handler(args);
-      if (typeof result === 'string') {
+      if (typeof result === "string") {
         console.log(result);
         return;
-      } else if (typeof result === 'number' && result > 0) {
-        yargs.exit(result, new Error('Unknown error'));
+      } else if (typeof result === "number" && result > 0) {
+        yargs.exit(result, new Error("Unknown error"));
         return;
       } else {
         return;
@@ -38,7 +40,7 @@ export abstract class Command {
         console.log(e.message);
         return;
       }
-      const error = e instanceof Error ? e : new Error('Unknown error');
+      const error = e instanceof Error ? e : new Error("Unknown error");
       console.log(error);
       yargs.exit(1, error);
     }
@@ -53,11 +55,11 @@ export abstract class Command {
     return arg as T;
   }
 
-  abstract handler(args: ArgumentsCamelCase): Promise<Result>
+  abstract handler(args: ArgumentsCamelCase): Promise<Result>;
 }
 
 export function bindCommand(describe: string) {
-  return function (commandConstructor: Newable<Command>, _: any) {
+  return function (commandConstructor: Newable<Command>) {
     const command = new commandConstructor();
 
     yargs.command({
@@ -65,6 +67,6 @@ export function bindCommand(describe: string) {
       describe,
       handler: command.realHandler.bind(command),
       builder: command.builder(),
-    })
-  }
+    });
+  };
 }
