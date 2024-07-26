@@ -11,7 +11,6 @@ export class Cr extends Command {
     return {
       update: option({
         string: true,
-        default: "",
         alias: "u",
       }),
       offset: option({
@@ -46,16 +45,27 @@ export class Cr extends Command {
 
     const command = `cr -i ${include.join(",")} ${this.getReview(
       args,
-    )} --parent HEAD^${args.offset}`;
+      log,
+    )} --parent HEAD^${args.offset} --destination-branch mainline`;
 
     await commandExec(command);
   }
 
-  getReview(args: ArgsOf<this>): string {
+  getReview(args: ArgsOf<this>, log: string): string {
     const { update } = args;
-    if (!update) {
+    if (update === undefined) {
       return "--new-review";
     }
+
+    if (update === "") {
+      const [cr] = log
+        .trim()
+        .substring(log.indexOf("code.amazon.com/reviews/") + 24)
+        .split("/");
+
+      return `-r ${cr}`;
+    }
+
     if (update.startsWith("http")) {
       const [cr] = update
         .substring(update.indexOf("code.amazon.com/reviews/") + 24)
