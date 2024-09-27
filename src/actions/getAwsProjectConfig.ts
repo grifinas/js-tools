@@ -1,30 +1,22 @@
 import { recursiveStatFile } from "../utils/fs/recursive-stat-file";
-import { loadYamlFile } from "../utils/fs/load-yaml-file";
+import fs from "fs/promises";
+import { tokenize } from "./tokenize";
+import { lexConfig } from "./lexConfig";
 
 export interface ProjectConfig {
-  root: string;
-  handlerPath: string;
-  archiveSystem: string;
+  path: string;
+  data: object;
 }
 
-export async function getAwsProjectConfig(): Promise<ProjectConfig> {
-  const { path } = await recursiveStatFile("./Config");
-  const directoryPath = path.replace(/\/Config$/, "");
-  const transformPath =
-    directoryPath + "/configuration/aws_lambda/lambda-transform.yml";
-
-  const { handler_path, archive_system } = await loadYamlFile<{
-    handler_path?: string;
-    archive_system?: string;
-  }>(transformPath);
-
-  if (!handler_path || !archive_system) {
-    throw new Error("Failed to find handler path in lambda-transform.yml.");
-  }
+export async function getAwsProjectConfig(
+  from?: string,
+): Promise<ProjectConfig> {
+  const { path } = await recursiveStatFile(`${from ?? "."}/Config`);
+  const buffer = await fs.readFile(path);
+  let content = buffer.toString("utf-8");
 
   return {
-    root: directoryPath,
-    handlerPath: handler_path,
-    archiveSystem: archive_system,
+    path,
+    data: lexConfig(tokenize(content)),
   };
 }

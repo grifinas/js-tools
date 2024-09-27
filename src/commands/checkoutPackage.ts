@@ -50,7 +50,6 @@ export class CheckoutPackage extends Command {
 
     await commandExec(
       `brazil ws use --versionset ${versionSet} --package ${packageName}`,
-      { dry: true },
     );
   }
 }

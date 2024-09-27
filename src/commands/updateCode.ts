@@ -5,7 +5,7 @@ import { option, withStage } from "../utils/stage";
 import { Options } from "yargs";
 import { commandExec } from "../utils/exec";
 import { adaAuth } from "../actions/adaAuth";
-import { getAwsProjectConfig } from "../actions/getAwsProjectConfig";
+import { getAwsLambdaTransform } from "../actions/getAwsLambdaTransform";
 
 @bindCommand("update-code [lambda-name] updates the code of specified lambda")
 export class UpdateCode extends Command {
@@ -24,6 +24,9 @@ export class UpdateCode extends Command {
         default: false,
         describe: "if True no sound is played when finished",
       }),
+      region: option({
+        string: true,
+      }),
     });
   }
 
@@ -32,7 +35,7 @@ export class UpdateCode extends Command {
       1,
       `Usage: jst ${this.name} [lambda-name]`,
     );
-    const config = await getAwsProjectConfig();
+    const config = await getAwsLambdaTransform();
     let folder = await getAwsArtifactDir(config);
     if (config.archiveSystem === "archive_nodejs") {
       await commandExec(`ln -sf ${config.root}/node_modules/ ${folder}`);
@@ -40,7 +43,7 @@ export class UpdateCode extends Command {
 
     await build(args.build)
       .then(zip(folder))
-      .then(upload(folder, lambdaName))
+      .then(upload(folder, lambdaName, args.region))
       .then(cleanup(folder));
 
     if (!args.nosound) {
@@ -74,13 +77,15 @@ function zip(folder: string) {
   };
 }
 
-function upload(folder: string, lambdaName: string) {
+function upload(folder: string, lambdaName: string, region?: string) {
   return async () => {
     console.log(`Uploading content`);
     await adaAuth();
 
     await commandExec(
-      `cd ${folder} && aws lambda update-function-code --function-name ${lambdaName} --zip-file fileb://lambda.zip`,
+      `cd ${folder} && aws lambda update-function-code --function-name ${lambdaName} ${
+        region ? `--region ${region}` : ""
+      } --zip-file fileb://lambda.zip`,
     );
   };
 }
