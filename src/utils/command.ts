@@ -3,6 +3,7 @@ import yargs, { ArgumentsCamelCase, Options } from "yargs";
 import { Newable } from "./newable";
 import { setStage, stageOption } from "./stage";
 import { MissingRequiredPositionalArg } from "./errors";
+import { FsCache } from "../services/fsCache";
 
 export type ArgsOf<T extends Command> = ArgumentsCamelCase<
   Record<keyof ReturnType<T["builder"]>, string>
@@ -26,6 +27,7 @@ export abstract class Command {
     }
     try {
       const result = await this.handler(args);
+      await FsCache.save();
       if (typeof result === "string") {
         console.log(result);
         return;

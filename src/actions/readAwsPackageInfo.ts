@@ -25,8 +25,8 @@ const equals = "\\s*=\\s*";
 const bracketContent = "\\{([^}]+)\\}";
 
 export async function readAwsPackageInfo(): Promise<Record<string, unknown>> {
-  const stat = await recursiveStatFile("./packageInfo");
-  const buffer = await fs.readFile(stat.path);
+  const { path: packageInfoPath } = await recursiveStatFile("./packageInfo");
+  const buffer = await fs.readFile(packageInfoPath);
   let content = buffer.toString("utf-8");
 
   const result: Record<string, unknown> = {};

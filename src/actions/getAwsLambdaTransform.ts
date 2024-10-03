@@ -8,8 +8,7 @@ export interface ProjectConfig {
 }
 
 export async function getAwsLambdaTransform(): Promise<ProjectConfig> {
-  const { path } = await recursiveStatFile("./Config");
-  const directoryPath = path.replace(/\/Config$/, "");
+  const { dir: directoryPath } = await recursiveStatFile("./Config");
   const transformPath =
     directoryPath + "/configuration/aws_lambda/lambda-transform.yml";
 

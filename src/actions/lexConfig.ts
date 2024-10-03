@@ -28,7 +28,6 @@ function parseObject(tokens: TokenStream): Record<string, string | object> {
       case "NUMBER":
         tokens.prev();
         varname = parseSemver(tokens);
-        const p = tokens.peek();
         const n = tokens.next();
         tokenAssert(n, "EQUALS");
         root[varname] = parseVariableValue(tokens);

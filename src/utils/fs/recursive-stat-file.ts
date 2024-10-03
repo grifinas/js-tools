@@ -1,20 +1,26 @@
 import * as fs from "fs/promises";
 import { localToFqn } from "./local-to-fqn";
 import { FileNotFoundError } from "../errors";
+import * as path from "path";
 
 //Bet there's an easier way to do this
 export async function recursiveStatFile(file: string, from?: string) {
-  const fullPath = from ? `${from}/${file}` : localToFqn(file);
+  const fullPath = from ? path.join(from, file) : localToFqn(file);
   const parts = fullPath.split("/");
+  const fileName = parts.pop() as string;
 
   while (parts.length > 1) {
-    const currentFilePath = parts.join("/");
+    const currentDir = parts.join("/");
+    const statPath = path.join(currentDir, fileName);
     try {
-      return { ...(await fs.stat(currentFilePath)), path: currentFilePath };
+      const stat = await fs.stat(statPath);
+      return {
+        ...stat,
+        dir: currentDir,
+        path: statPath,
+      };
     } catch (e) {
-      const fileName = parts.pop() as string;
       parts.pop();
-      parts.push(fileName);
     }
   }
 

@@ -6,6 +6,8 @@ import { Options } from "yargs";
 import { commandExec } from "../utils/exec";
 import { adaAuth } from "../actions/adaAuth";
 import { getAwsLambdaTransform } from "../actions/getAwsLambdaTransform";
+import { getLambdaNames } from "../actions/getLambdaNames";
+import * as path from "path";
 
 @bindCommand("update-code [lambda-name] updates the code of specified lambda")
 export class UpdateCode extends Command {
@@ -27,14 +29,14 @@ export class UpdateCode extends Command {
       region: option({
         string: true,
       }),
+      file: option({
+        string: true,
+      }),
     });
   }
 
   async handler(args: ArgsOf<this>) {
-    const lambdaName = this.argAt<string>(
-      1,
-      `Usage: jst ${this.name} [lambda-name]`,
-    );
+    const lambdaName = await this.getLambdaName(args);
     const config = await getAwsLambdaTransform();
     let folder = await getAwsArtifactDir(config);
     if (config.archiveSystem === "archive_nodejs") {
@@ -51,6 +53,28 @@ export class UpdateCode extends Command {
     }
 
     return "Done!";
+  }
+
+  async getLambdaName(args: ArgsOf<this>): Promise<string> {
+    if (args.file) {
+      console.info("Resolving lambda name from file");
+      const name = path.parse(args.file).name.toLowerCase();
+      const names = await getLambdaNames();
+      const foundNames = names.filter((n) => n.toLowerCase().includes(name));
+      if (!foundNames.length) {
+        throw new Error("Could not match current file to a lambda");
+      } else if (foundNames.length === 1) {
+        return foundNames[0];
+      } else {
+        throw new Error(
+          `More than 1 lambda name matches the file: ${JSON.stringify(
+            foundNames,
+          )}`,
+        );
+      }
+    } else {
+      return this.argAt<string>(1, `Usage: jst ${this.name} [lambda-name]`);
+    }
   }
 }
 
