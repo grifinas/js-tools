@@ -37,7 +37,23 @@ async function isAlreadyAuthenticated(account: string): Promise<boolean> {
   const cache = await FsCache.instance();
   const ada = cache.get<AdaAuthCache>("adaauth");
 
-  return Boolean(
-    ada && ada.account === account && ada.iat > minutesFromNow(-5).getTime(),
-  );
+  if (!ada) {
+    console.log("No ADA construct in cache");
+    return false;
+  }
+
+  if (ada.account !== account) {
+    console.log(
+      `Account does not match what is in the cache: ${ada.account} vs ${account}`,
+    );
+    return false;
+  }
+
+  const threshold = minutesFromNow(-5).getTime();
+  if (ada.iat <= threshold) {
+    console.log(`Cache is too old, expected ${ada.iat} > ${threshold}`);
+    return false;
+  }
+
+  return true;
 }

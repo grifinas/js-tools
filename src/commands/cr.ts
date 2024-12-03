@@ -18,6 +18,11 @@ export class Cr extends Command {
         default: 1,
         alias: "o",
       }),
+      destination: option({
+        string: true,
+        default: "mainline",
+        alias: "d",
+      }),
     };
   }
 
@@ -46,7 +51,7 @@ export class Cr extends Command {
     const command = `cr -i ${include.join(",")} ${this.getReview(
       args,
       log,
-    )} --parent HEAD^${args.offset} --destination-branch mainline`;
+    )} --parent HEAD~${args.offset} --destination-branch ${args.destination}`;
 
     await commandExec(command);
   }

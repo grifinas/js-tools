@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-lambda": "^3.662.0",
-    "axios": "^1.5.1",
+    "axios": "1.7.4",
     "chalk": "^4.0.0",
     "js-yaml": "^4.1.0",
     "lodash": "^4.17.21",

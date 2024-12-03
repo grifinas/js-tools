@@ -1,7 +1,7 @@
 import * as fs from "fs/promises";
-import { localToFqn } from "./local-to-fqn";
 import { FileNotFoundError } from "../errors";
 import * as path from "path";
+import { localToFqn } from "./local-to-fqn";
 
 //Bet there's an easier way to do this
 export async function recursiveStatFile(file: string, from?: string) {
@@ -13,9 +13,8 @@ export async function recursiveStatFile(file: string, from?: string) {
     const currentDir = parts.join("/");
     const statPath = path.join(currentDir, fileName);
     try {
-      const stat = await fs.stat(statPath);
+      await fs.readFile(statPath);
       return {
-        ...stat,
         dir: currentDir,
         path: statPath,
       };
