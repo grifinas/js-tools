@@ -15,26 +15,26 @@ export class DevDeploy extends Command {
         alias: "i",
         default: false,
         describe:
-          "whether to include stack dependencies into the deployment process",
+          "If passed will include stack dependencies into the deployment process",
       }),
       build: option({
         boolean: true,
         alias: "b",
         default: false,
-        describe: "whether to build the application before deploying or not",
+        describe: "If passed, will run brazil-build before deploying",
       }),
       parse: option({
         boolean: true,
         alias: "p",
         default: true,
         describe:
-          "whether to parse the stack name, spreading brackets and applying wildcards",
+          "If disabled, will treat stack name as literal as opposed to parsing it, spreading brackets and applying wildcards",
       }),
       skipNameCheck: option({
         boolean: true,
         default: false,
         describe:
-          "If enabled does not check against JSON files to see if the stack name exists",
+          "If passed, does not check against JSON files to see if the stack name exists",
       }),
     });
   }

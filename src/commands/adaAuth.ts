@@ -1,17 +1,18 @@
 import { ArgsOf, bindCommand, Command } from "../utils/command";
 import { adaAuth } from "../actions/adaAuth";
-import { Options } from "yargs";
 import { getAwsAccount } from "../actions/getAwsAccount";
-import { withStage } from "../utils/stage";
+import { option, withStage } from "../utils/stage";
 
 @bindCommand("ADA auth")
 export class AdaAuth extends Command {
   builder() {
     return withStage({
-      account: {
+      account: option({
         string: true,
         alias: "a",
-      } as Options,
+        description:
+          "Account ID to auth as, by default gets the account from accounts.json file",
+      }),
     });
   }
 

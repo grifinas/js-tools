@@ -18,19 +18,22 @@ export class UpdateCode extends Command {
         type: "string",
         alias: "b",
         default: "brazil",
-        describe: "what command to use to build the application",
+        describe: "What command to use to build the application",
       } as Options,
       quiet: option({
         boolean: true,
         alias: "q",
         default: false,
-        describe: "if True no sound is played when finished",
+        describe: "If passed, no sound is played when finished",
       }),
       region: option({
         string: true,
+        describe: "Region in which to run the update",
       }),
       file: option({
         string: true,
+        description:
+          "If passed, will try to resolve the lambda name from specified file",
       }),
     });
   }

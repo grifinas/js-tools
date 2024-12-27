@@ -12,16 +12,20 @@ export class Cr extends Command {
       update: option({
         string: true,
         alias: "u",
+        description:
+          "If passed, will try to find an existing CR in the git message and update that CR",
       }),
       offset: option({
         number: true,
         default: 1,
         alias: "o",
+        description: "How many commits back to take as the parent of the CR",
       }),
       destination: option({
         string: true,
         default: "mainline",
         alias: "d",
+        description: "Destination branch in code.amazon.com",
       }),
     };
   }

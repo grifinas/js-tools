@@ -13,6 +13,7 @@ export class WhoOwns extends Command {
         boolean: true,
         default: false,
         alias: "a",
+        description: "If passed, will find all instances of resource",
       }),
     });
   }

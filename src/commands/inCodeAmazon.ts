@@ -9,9 +9,11 @@ export class InCodeAmazon extends Command {
     return {
       file: option({
         string: true,
+        description: "File to link in code.amazon.com",
       }),
       line: option({
         number: true,
+        description: "Line to link in code.amazon.com",
       }),
     };
   }
