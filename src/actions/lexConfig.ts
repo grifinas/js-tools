@@ -1,5 +1,4 @@
-import { Token, TokenStream } from "./tokenize";
-import { cliAssert } from "../utils/cli-assert";
+import { tokenAssert, TokenStream, unexpectedToken } from "./tokenize";
 
 export function lexConfig(tokens: TokenStream): object {
   tokenAssert(tokens.get(), "WORD", "package");
@@ -90,30 +89,4 @@ function parseSemver(tokens: TokenStream): string {
   }
 
   return result;
-}
-
-function tokenAssert(token: Token, type: Token["type"], value?: string) {
-  const typesEqual = token.type === type;
-  const valuesEqual = value ? token.value === value : true;
-  cliAssert(
-    typesEqual && valuesEqual,
-    `Expected token to be ${type}${
-      value ? `::${value}` : ""
-    }, but got: ${JSON.stringify(token, null, 2)}`,
-  );
-}
-
-function unexpectedToken(
-  token: Token,
-  where?: string,
-  expected?: string,
-): never {
-  cliAssert(
-    false,
-    `Unexpected token ${where ? `in ${where}` : ""}: ${JSON.stringify(
-      token,
-      null,
-      2,
-    )}${expected ? ` Expected: ${expected}` : ""}`,
-  );
 }

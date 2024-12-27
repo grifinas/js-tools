@@ -1,12 +1,16 @@
+import { cliAssert } from "../utils/cli-assert";
+
 export type Token =
   | { type: "WORD"; value: string }
+  | { type: "NUMBER"; value: string }
   | { type: "BRACKET"; value: string }
   | { type: "BRACE"; value: string }
   | { type: "PAREN"; value: string }
+  | { type: "SPECIAL"; value: string }
   | { type: "DOT"; value: string }
-  | { type: "NUMBER"; value: string }
-  | { type: "EQUALS"; value: string }
-  | { type: "SEMICOLON"; value: string };
+  | { type: "COMMA"; value: string }
+  | { type: "SEMICOLON"; value: string }
+  | { type: "EQUALS"; value: string };
 
 function isWord(char: string): boolean {
   return /[a-zA-Z\-]/.test(char);
@@ -73,8 +77,20 @@ export function tokenize(input: string): TokenStream {
       continue;
     }
 
+    if (char === ",") {
+      tokens.push({ type: "COMMA", value: char });
+      current++;
+      continue;
+    }
+
     if (char === "=") {
       tokens.push({ type: "EQUALS", value: char });
+      current++;
+      continue;
+    }
+
+    if (["@", "$", "%", "^", "&", "*"].includes(char)) {
+      tokens.push({ type: "SPECIAL", value: char });
       current++;
       continue;
     }
@@ -157,4 +173,30 @@ export class TokenStream {
     }
     return results;
   }
+}
+
+export function tokenAssert(token: Token, type: Token["type"], value?: string) {
+  const typesEqual = token.type === type;
+  const valuesEqual = value ? token.value === value : true;
+  cliAssert(
+    typesEqual && valuesEqual,
+    `Expected token to be ${type}${
+      value ? `::${value}` : ""
+    }, but got: ${JSON.stringify(token, null, 2)}`,
+  );
+}
+
+export function unexpectedToken(
+  token: Token,
+  where?: string,
+  expected?: string,
+): never {
+  cliAssert(
+    false,
+    `Unexpected token ${where ? `in ${where}` : ""}: ${JSON.stringify(
+      token,
+      null,
+      2,
+    )}${expected ? ` Expected: ${expected}` : ""}`,
+  );
 }
