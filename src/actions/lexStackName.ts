@@ -1,6 +1,7 @@
 import { tokenAssert, TokenStream, unexpectedToken } from "./tokenize";
 
 export function lexStackName(tokens: TokenStream): string[] {
+  console.log("lexing", tokens.toString());
   let parts: string[] = [];
 
   do {
@@ -19,7 +20,7 @@ export function lexStackName(tokens: TokenStream): string[] {
         parts = mult(parts, words);
         break;
       default:
-        unexpectedToken(token, "variable definition");
+        unexpectedToken(token, "Stack name");
     }
   } while (tokens.hasNext() && tokens.next());
 

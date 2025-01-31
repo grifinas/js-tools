@@ -173,6 +173,72 @@ export class TokenStream {
     }
     return results;
   }
+
+  toString(): string {
+    return this.tokens.map(stringifyToken).join("");
+  }
+
+  toStringFromCurrent(): string {
+    return [...this.tokens].splice(this.index).map(stringifyToken).join("");
+  }
+
+  stringifyTokenContext(start: number = 5, end: number = 2): string {
+    const relevantTokens = [...this.tokens].splice(
+      this.index - start,
+      start + end,
+    );
+
+    const beforeTokens = [...relevantTokens].splice(0, start);
+    const length = beforeTokens.reduce(
+      (l, token) => l + stringifyToken(token).length,
+      0,
+    );
+    const relevantLine = relevantTokens.map(stringifyToken).join("");
+    return (
+      "\n" +
+      relevantLine +
+      "\n" +
+      " ".repeat(length) +
+      "^" +
+      "\n" +
+      new Error().stack
+    );
+  }
+
+  assert(type: Token["type"], value?: string) {
+    const token = this.get();
+    const typesEqual = token.type === type;
+    const valuesEqual = value ? token.value === value : true;
+    cliAssert(
+      typesEqual && valuesEqual,
+      () =>
+        `Expected token to be ${type}${
+          value ? `::${value}` : ""
+        }, but got: ${token.value}::${token.type} at ${this.stringifyTokenContext()}`,
+    );
+  }
+
+  assertNext(type: Token["type"], value?: string) {
+    const token = this.next();
+    const typesEqual = token.type === type;
+    const valuesEqual = value ? token.value === value : true;
+    cliAssert(
+      typesEqual && valuesEqual,
+      () =>
+        `Expected token to be ${type}${
+          value ? `::${value}` : ""
+        }, but got: ${token.value}::${token.type} at ${this.stringifyTokenContext()}`,
+    );
+  }
+
+  unexpectedToken(where?: string, expected?: string): never {
+    const token = this.get();
+    cliAssert(
+      false,
+      () => `Unexpected token ${where ? `in ${where}` : ""}: ${token.value}::${token.type} 
+      ${expected ? ` Expected: ${expected}` : ""} at ${this.stringifyTokenContext()}`,
+    );
+  }
 }
 
 export function tokenAssert(token: Token, type: Token["type"], value?: string) {
@@ -182,7 +248,7 @@ export function tokenAssert(token: Token, type: Token["type"], value?: string) {
     typesEqual && valuesEqual,
     `Expected token to be ${type}${
       value ? `::${value}` : ""
-    }, but got: ${JSON.stringify(token, null, 2)}`,
+    }, but got: ${JSON.stringify(token, null, 2)} at ${new Error().stack}`,
   );
 }
 
@@ -199,4 +265,21 @@ export function unexpectedToken(
       2,
     )}${expected ? ` Expected: ${expected}` : ""}`,
   );
+}
+
+export function stringifyToken(token: Token): string {
+  switch (token.type) {
+    case "NUMBER":
+    case "BRACE":
+    case "BRACKET":
+    case "COMMA":
+    case "DOT":
+    case "PAREN":
+    case "SEMICOLON":
+    case "SPECIAL":
+      return token.value;
+    case "EQUALS":
+    case "WORD":
+      return token.value + " ";
+  }
 }

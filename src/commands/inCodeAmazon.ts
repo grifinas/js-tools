@@ -23,6 +23,7 @@ export class InCodeAmazon extends Command {
 
     const { path: configPath, data: config } = await getAwsProjectConfig(
       path.dirname(file),
+      true,
     );
     const packageName = Object.keys(config)[0];
     const pathToFile = file.replace(path.dirname(configPath), "");

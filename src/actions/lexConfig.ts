@@ -1,12 +1,18 @@
-import { tokenAssert, TokenStream, unexpectedToken } from "./tokenize";
+import { TokenStream } from "./tokenize";
 
-export function lexConfig(tokens: TokenStream): object {
-  tokenAssert(tokens.get(), "WORD", "package");
-  tokenAssert(tokens.next(), "DOT");
+export function lexConfig(tokens: TokenStream, onlyRoot = false): object {
+  tokens.assert("WORD", "package");
+  tokens.assertNext("DOT");
   const rootName = tokens.next();
-  tokenAssert(rootName, "WORD");
-  tokenAssert(tokens.next(), "EQUALS");
-  tokenAssert(tokens.next(), "BRACE", "{");
+  tokens.assert("WORD");
+  tokens.assertNext("EQUALS");
+  tokens.assertNext("BRACE", "{");
+
+  if (onlyRoot) {
+    return {
+      [rootName.value]: {},
+    };
+  }
 
   return {
     [rootName.value]: parseObject(tokens),
@@ -21,19 +27,25 @@ function parseObject(tokens: TokenStream): Record<string, string | object> {
 
     switch (token.type) {
       case "WORD":
-        tokenAssert(tokens.next(), "EQUALS");
-        root[varname] = parseVariableValue(tokens);
+        const aaa = tokens.next();
+        if (aaa.type === "NUMBER") {
+          varname += aaa.value;
+          tokens.assertNext("EQUALS");
+          root[varname] = parseVariableValue(tokens);
+        } else {
+          tokens.assert("EQUALS");
+          root[varname] = parseVariableValue(tokens);
+        }
         break;
       case "NUMBER":
         tokens.prev();
         varname = parseSemver(tokens);
-        const n = tokens.next();
-        tokenAssert(n, "EQUALS");
+        tokens.assertNext("EQUALS");
         root[varname] = parseVariableValue(tokens);
         break;
       case "BRACE":
-        tokenAssert(token, "BRACE", "}");
-        tokenAssert(tokens.next(), "SEMICOLON");
+        tokens.assert("BRACE", "}");
+        tokens.assertNext("SEMICOLON");
         return root;
     }
   }
@@ -51,19 +63,19 @@ function parseVariableValue(tokens: TokenStream): string | object {
       return parseSemver(tokens);
     case "WORD":
       const value = nextToken.value;
-      tokenAssert(tokens.next(), "SEMICOLON");
+      tokens.assertNext("SEMICOLON");
       return value;
     case "PAREN":
       return parseVariableValue(tokens);
     default:
-      unexpectedToken(nextToken, "variable definition");
+      tokens.unexpectedToken("variable definition");
   }
 }
 
 function parseSemver(tokens: TokenStream): string {
   let result = "";
   let nextToken = tokens.next();
-  tokenAssert(nextToken, "NUMBER");
+  tokens.assert("NUMBER");
   result += nextToken.value;
 
   while (tokens.hasNext()) {
@@ -84,7 +96,7 @@ function parseSemver(tokens: TokenStream): string {
         //IGNORE PARENTHESES
         break;
       default:
-        unexpectedToken(nextToken, "semver parsing");
+        tokens.unexpectedToken("Semver parsing");
     }
   }
 

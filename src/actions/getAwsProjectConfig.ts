@@ -10,6 +10,7 @@ export interface ProjectConfig {
 
 export async function getAwsProjectConfig(
   from?: string,
+  onlyRoot = false,
 ): Promise<ProjectConfig> {
   const { path } = await recursiveStatFile(`${from ?? "."}/Config`);
   const buffer = await fs.readFile(path);
@@ -17,6 +18,6 @@ export async function getAwsProjectConfig(
 
   return {
     path,
-    data: lexConfig(tokenize(content)),
+    data: lexConfig(tokenize(content), onlyRoot),
   };
 }

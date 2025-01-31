@@ -40,13 +40,36 @@ export class DevDeploy extends Command {
   }
 
   async handler(args: ArgsOf<this>) {
+    const stacks = await this.parseStacks(args);
+
+    if (!stacks.length) {
+      console.error("No stacks found, exiting");
+      return 1;
+    }
+
+    console.log("Will deploy stacks:", stacks);
+
+    await adaAuth();
+    if (args.build) {
+      await commandExec(`brazil-build`);
+    }
+
+    for (const stack of stacks) {
+      await commandExec(
+        `cdk deploy ${stack} --require-approval never ${
+          args.inclusive ? "" : "--exclusively"
+        }`,
+      );
+    }
+  }
+
+  async parseStacks(args: ArgsOf<this>): Promise<string[]> {
     const stack = this.argAt<string>(1, "Usage: jst dev-deploy [stack]");
 
-    let availableStacksPromise: Promise<string[] | null> =
-      Promise.resolve(null);
+    let availableStacks: string[] = [];
     if (!args.skipNameCheck) {
       try {
-        availableStacksPromise = listStacks();
+        availableStacks = await listStacks();
       } catch (e) {
         if (e instanceof ListStacksError) {
           console.error(e.message);
@@ -54,9 +77,12 @@ export class DevDeploy extends Command {
           console.error(
             "You can try rerunning with -b command, if that does not work, --skipNameCheck will",
           );
-          return 1;
+          console.log(
+            "Failed to list stacks, proceeding as if stack name is accurate",
+          );
         }
         console.error(e);
+        throw e;
       }
     }
 
@@ -71,26 +97,15 @@ export class DevDeploy extends Command {
       stacks.push(stack);
     }
 
-    if (!args.skipNameCheck) {
-      const availableStacks = (await availableStacksPromise) as string[];
+    console.log("parsed stacks:", stacks);
 
+    if (!args.skipNameCheck) {
       for (const i in stacks) {
         stacks[i] = matchStackName(stacks[i], availableStacks);
       }
     }
 
-    await adaAuth();
-    if (args.build) {
-      await commandExec(`brazil-build`);
-    }
-
-    for (const stack of stacks.filter(Boolean)) {
-      await commandExec(
-        `cdk deploy ${stack} --require-approval never ${
-          args.inclusive ? "" : "--exclusively"
-        }`,
-      );
-    }
+    return stacks.filter(Boolean);
   }
 }
 
@@ -99,10 +114,13 @@ function matchStackName(
   availableStacks: string[],
   iteration = 1,
 ): string {
+  const lowercaseName = name.toLowerCase();
   let matching: string[] = [];
   switch (iteration) {
     case 1:
-      matching = availableStacks.filter((s) => s.startsWith(name));
+      matching = availableStacks.filter((s) =>
+        s.toLowerCase().includes(lowercaseName),
+      );
       break;
     case 2:
       matching = availableStacks.filter((s) => s.includes(getStage()));
@@ -116,6 +134,7 @@ function matchStackName(
     case 1:
       return matching[0];
     default:
+      console.log("Matching stacks for", name, "--", matching);
       return matchStackName(name, matching, iteration + 1);
   }
 }
