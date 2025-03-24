@@ -39,6 +39,8 @@ export class UpdateCode extends Command {
   }
 
   async handler(args: ArgsOf<this>) {
+    this.playSound = !args.quiet;
+
     const lambdaName = await this.getLambdaName(args);
     const config = await getAwsLambdaTransform();
     let folder = await getAwsArtifactDir(config);
@@ -50,10 +52,6 @@ export class UpdateCode extends Command {
       .then(zip(folder))
       .then(upload(folder, lambdaName, args.region))
       .then(cleanup(folder));
-
-    if (!args.nosound) {
-      await commandExec("printf '\\7'");
-    }
 
     return "Done!";
   }

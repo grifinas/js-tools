@@ -4,13 +4,17 @@ import { Newable } from "./newable";
 import { setStage, stageOption } from "./stage";
 import { MissingRequiredPositionalArg } from "./errors";
 import { FsCache } from "../services/fsCache";
+import { failSound, successSound } from "../actions/playSound";
+import { defer, settleDefferedPromises } from "./defer";
 
 export type ArgsOf<T extends Command> = ArgumentsCamelCase<
   Record<keyof ReturnType<T["builder"]>, string>
 >;
 export type Result = void | string | number;
 export abstract class Command {
+  protected playSound: boolean = false;
   private args: ArgumentsCamelCase | null = null;
+
   get name() {
     return toKebabCase(this.constructor.name);
   }
@@ -25,26 +29,39 @@ export abstract class Command {
       //@ts-ignore
       setStage(args.stage || "beta");
     }
+
+    let responseCode: number = 0;
+    let error: Error | undefined;
     try {
       const result = await this.handler(args);
       await FsCache.save();
       if (typeof result === "string") {
+        this.playSound && defer(successSound());
         console.log(result);
-        return;
       } else if (typeof result === "number" && result > 0) {
-        yargs.exit(result, new Error("Unknown error"));
-        return;
+        this.playSound && defer(failSound());
+        responseCode = result;
+        error = new Error("Unknown error");
       } else {
-        return;
+        this.playSound && defer(successSound());
       }
     } catch (e) {
+      this.playSound && defer(failSound());
       if (e instanceof MissingRequiredPositionalArg) {
-        console.log(e.message);
-        return;
+        console.error(e.message);
+      } else {
+        error = e instanceof Error ? e : new Error("Unknown error");
+        responseCode = 1;
       }
-      const error = e instanceof Error ? e : new Error("Unknown error");
-      console.log(error);
-      yargs.exit(1, error);
+    } finally {
+      await settleDefferedPromises();
+    }
+
+    if (responseCode !== 0 && error) {
+      console.error(error);
+      yargs.exit(responseCode, error);
+    } else {
+      return;
     }
   }
 

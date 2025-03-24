@@ -17,6 +17,12 @@ export class DevDeploy extends Command {
         describe:
           "If passed will include stack dependencies into the deployment process",
       }),
+      quiet: option({
+        boolean: true,
+        alias: "q",
+        default: false,
+        describe: "If passed, no sound is played when finished",
+      }),
       build: option({
         boolean: true,
         alias: "b",
@@ -40,6 +46,8 @@ export class DevDeploy extends Command {
   }
 
   async handler(args: ArgsOf<this>) {
+    this.playSound = !args.quiet;
+
     const stacks = await this.parseStacks(args);
 
     if (!stacks.length) {
