@@ -9,11 +9,12 @@ import { option } from "../utils/stage";
 export class CheckoutPackage extends Command {
   builder() {
     return {
-      packageValidation: option({
+      new: option({
         boolean: true,
-        alias: "p",
-        default: true,
-        describe: "whether to validate package name with the packageInfo file",
+        alias: "n",
+        default: false,
+        describe:
+          "Whether or not this package is new to this VS, if so skips name validation",
       }),
     };
   }
@@ -31,7 +32,7 @@ export class CheckoutPackage extends Command {
       throw new Error("Unable to find versionSet");
     }
 
-    if (args.packageValidation) {
+    if (!args.new) {
       const packages = info.packages as
         | Record<string, string | undefined>
         | undefined;
