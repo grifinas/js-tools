@@ -48,8 +48,8 @@ export class CreateCognitoUser extends Command {
       case 1:
         return pools.UserPools[0].Id;
       default:
-        const filteredPools = pools.UserPools.filter((pool: any) =>
-          (pool.Name as string).includes(args.stage),
+        const filteredPools = pools.UserPools.filter(
+          (pool: Record<string, string>) => pool.Name.includes(args.stage),
         );
         if (filteredPools.length !== 1)
           throw new Error("Failed to get Cognito user pools");
