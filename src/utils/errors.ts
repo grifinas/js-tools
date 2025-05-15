@@ -4,7 +4,10 @@ export class InvalidStageError extends Error {}
 export class InvalidAwsAccountError extends Error {}
 export class MissingRequiredPositionalArg extends Error {}
 export class ExecError extends Error {
-  constructor(message: string, public readonly code: number) {
+  constructor(
+    message: string,
+    public readonly code: number,
+  ) {
     super(message);
   }
 }
