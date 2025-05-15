@@ -1,4 +1,3 @@
-import { toKebabCase } from "./string/to-kebab-case";
 import yargs, { ArgumentsCamelCase, Options } from "yargs";
 import { Newable } from "./newable";
 import { setStage, stageOption } from "./stage";
@@ -6,6 +5,7 @@ import { MissingRequiredPositionalArg } from "./errors";
 import { FsCache } from "../services/fsCache";
 import { failSound, successSound } from "../actions/playSound";
 import { defer, settleDefferedPromises } from "./defer";
+import { toKebabCase } from "./string/prototype";
 
 export type ArgsOf<T extends Command> = ArgumentsCamelCase<
   Record<keyof ReturnType<T["builder"]>, string>

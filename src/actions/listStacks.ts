@@ -1,15 +1,4 @@
-import * as fs from "fs/promises";
-
-interface Stack {
-  id: string;
-  constructInfo: {
-    fqn: string;
-  };
-}
-
-interface Pipeline {
-  tree: { children: Record<string, Stack> };
-}
+import { readCdkTree } from "./readCdkTree";
 
 export class ListStacksError extends Error {
   constructor(
@@ -21,24 +10,16 @@ export class ListStacksError extends Error {
 }
 
 export async function listStacks(): Promise<string[]> {
-  const pathToPipeline = "./build/cdk.out/tree.json";
-  let json: Pipeline | null = null;
-  try {
-    const buffer = await fs.readFile(pathToPipeline);
-    const content = buffer.toString("utf-8");
-    json = JSON.parse(content);
-  } catch (e) {
-    throw new ListStacksError("Failed to load pipeline", e);
-  }
+  const tree = await readCdkTree();
 
-  if (!json) {
+  if (!tree) {
     return [];
   }
 
   const stacks: Set<string> = new Set();
 
   try {
-    const treeStacks = json.tree.children || {};
+    const treeStacks = tree.tree.children || {};
     for (const stack in treeStacks) {
       if (
         treeStacks[stack].constructInfo.fqn ===

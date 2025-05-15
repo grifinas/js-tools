@@ -1,7 +1,5 @@
 import { ArgsOf, bindCommand, Command } from "../utils/command";
 import { adaAuth } from "../actions/adaAuth";
-import { Options } from "yargs";
-import { getAwsAccount } from "../actions/getAwsAccount";
 import { option, withStage } from "../utils/stage";
 import { commandExec } from "../utils/exec";
 

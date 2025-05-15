@@ -5,6 +5,7 @@ import { adaAuth } from "../actions/adaAuth";
 import { lexStackName } from "../actions/lexStackName";
 import { tokenize } from "../actions/tokenize";
 import { listStacks, ListStacksError } from "../actions/listStacks";
+import { cliError, cliInfo } from "../utils/logger";
 
 @bindCommand("dev-deploy [stack] deploys specified stack to AWS")
 export class DevDeploy extends Command {
@@ -51,7 +52,7 @@ export class DevDeploy extends Command {
     const stacks = await this.parseStacks(args);
 
     if (!stacks.length) {
-      console.error("No stacks found, exiting");
+      cliError("No stacks found, exiting");
       return 1;
     }
 
@@ -80,16 +81,16 @@ export class DevDeploy extends Command {
         availableStacks = await listStacks();
       } catch (e) {
         if (e instanceof ListStacksError) {
-          console.error(e.message);
-          console.error("Reason:", e.prev);
-          console.error(
+          cliError(e.message);
+          cliError("Reason:", e.prev);
+          cliError(
             "You can try rerunning with -b command, if that does not work, --skipNameCheck will",
           );
           console.log(
             "Failed to list stacks, proceeding as if stack name is accurate",
           );
         }
-        console.error(e);
+        cliError(e);
         throw e;
       }
     }
@@ -135,9 +136,15 @@ function matchStackName(
       break;
   }
 
+  const exactMatch = matching.find((m) => m === lowercaseName);
+  if (exactMatch) {
+    cliInfo(`Found exact match: ${exactMatch}`);
+    return exactMatch;
+  }
+
   switch (matching.length) {
     case 0:
-      console.error(`No stack found matching: "${name}"`);
+      cliError(`No stack found matching: "${name}"`);
       return "";
     case 1:
       return matching[0];

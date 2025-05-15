@@ -13,13 +13,19 @@ import * as path from "path";
 export class UpdateCode extends Command {
   builder() {
     return withStage({
-      build: {
+      build: option({
         choices: ["brazil", "npm", "none"],
         type: "string",
         alias: "b",
         default: "brazil",
         describe: "What command to use to build the application",
-      } as Options,
+      }),
+      dir: option({
+        type: "string",
+        alias: "z",
+        describe:
+          "If passed will not build anything. Instead just zip specified dir and send",
+      }),
       quiet: option({
         boolean: true,
         alias: "q",
@@ -42,16 +48,24 @@ export class UpdateCode extends Command {
     this.playSound = !args.quiet;
 
     const lambdaName = await this.getLambdaName(args);
+
+    if (args.dir) {
+      await zip(args.dir);
+      await upload(args.dir, lambdaName, args.region);
+      await cleanup(args.dir);
+      return "Done!";
+    }
+
     const config = await getAwsLambdaTransform();
     let folder = await getAwsArtifactDir(config);
     if (config.archiveSystem === "archive_nodejs") {
       await commandExec(`ln -sf ${config.root}/node_modules/ ${folder}`);
     }
 
-    await build(args.build)
-      .then(zip(folder))
-      .then(upload(folder, lambdaName, args.region))
-      .then(cleanup(folder));
+    await build(args.build);
+    await zip(folder);
+    await upload(folder, lambdaName, args.region);
+    await cleanup(folder);
 
     return "Done!";
   }
@@ -94,30 +108,25 @@ async function build(build: string): Promise<void> {
   }
 }
 
-function zip(folder: string) {
-  return async () => {
-    console.log(`Zipping content ${folder}`);
+async function zip(folder: string) {
+  console.log(`Zipping content ${folder}`);
 
-    await commandExec(`cd ${folder} && zip -r9 lambda.zip . > /dev/null 2>&1`);
-  };
+  await commandExec(`cd ${folder} && zip -r9 lambda.zip . > /dev/null 2>&1`);
 }
 
-function upload(folder: string, lambdaName: string, region?: string) {
-  return async () => {
-    console.log(`Uploading content`);
-    await adaAuth();
+async function upload(folder: string, lambdaName: string, region?: string) {
+  console.log(`Uploading content`);
+  await adaAuth();
 
-    await commandExec(
-      `cd ${folder} && aws lambda update-function-code --function-name ${lambdaName} ${
-        region ? `--region ${region}` : ""
-      } --zip-file fileb://lambda.zip`,
-    );
-  };
+  await commandExec(
+    `cd ${folder} && aws lambda update-function-code --function-name ${lambdaName} ${
+      region ? `--region ${region}` : ""
+    } --zip-file fileb://lambda.zip`,
+    { quiet: true },
+  );
 }
 
-function cleanup(folder: string) {
-  return async () => {
-    console.log("removing lambda.zip");
-    await rm(`${folder}/lambda.zip`);
-  };
+async function cleanup(folder: string) {
+  console.log("removing lambda.zip");
+  await rm(`${folder}/lambda.zip`);
 }
