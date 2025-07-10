@@ -20,10 +20,12 @@ export class CheckoutPackage extends Command {
   }
 
   async handler(args: ArgsOf<this>) {
-    const packageName = this.argAt(
+    const packageNameUserInput = this.argAt<string>(
       1,
       "Usage: jst checkout-package [package-name]",
     );
+
+    const packageName = packageNameUserInput.replace(/\/mainline$/, "");
 
     const info = await readAwsPackageInfo();
     const base = info.base as Record<string, string | undefined> | undefined;

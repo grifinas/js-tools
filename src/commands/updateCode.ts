@@ -2,7 +2,6 @@ import { ArgsOf, bindCommand, Command } from "../utils/command";
 import { getAwsArtifactDir } from "../actions/getAwsArtifactDir";
 import { rm } from "fs/promises";
 import { option, withStage } from "../utils/stage";
-import { Options } from "yargs";
 import { commandExec } from "../utils/exec";
 import { adaAuth } from "../actions/adaAuth";
 import { getAwsLambdaTransform } from "../actions/getAwsLambdaTransform";
