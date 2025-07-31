@@ -7,6 +7,15 @@ import { adaAuth } from "../actions/adaAuth";
 import { getAwsLambdaTransform } from "../actions/getAwsLambdaTransform";
 import { getLambdaNames } from "../actions/getLambdaNames";
 import * as path from "path";
+import { promptUser } from "../actions/prompt-user";
+
+const Prune = {
+  yes: "yes",
+  no: "no",
+  ask: "ask",
+  always: "always",
+} as const;
+const PRUNE_OPTIONS = Object.values(Prune);
 
 @bindCommand("update-code [lambda-name] updates the code of specified lambda")
 export class UpdateCode extends Command {
@@ -40,6 +49,12 @@ export class UpdateCode extends Command {
         description:
           "If passed, will try to resolve the lambda name from specified file",
       }),
+      prune: option({
+        string: true,
+        choices: PRUNE_OPTIONS,
+        default: "ask",
+        description: "Should we run npm prune if zip file size is too big.",
+      }),
     });
   }
 
@@ -49,7 +64,7 @@ export class UpdateCode extends Command {
     const lambdaName = await this.getLambdaName(args);
 
     if (args.dir) {
-      await zip(args.dir);
+      await zip(args.dir, args.prune);
       await upload(args.dir, lambdaName, args.region);
       await cleanup(args.dir);
       return "Done!";
@@ -62,7 +77,7 @@ export class UpdateCode extends Command {
     }
 
     await build(args.build);
-    await zip(folder);
+    await zip(folder, args.prune);
     await upload(folder, lambdaName, args.region);
     await cleanup(folder);
 
@@ -107,10 +122,33 @@ async function build(build: string): Promise<void> {
   }
 }
 
-async function zip(folder: string) {
+async function zip(folder: string, prune: string) {
   console.log(`Zipping content ${folder}`);
 
+  if (prune === Prune.always) {
+    await commandExec(`npm prune --production`);
+  }
   await commandExec(`cd ${folder} && zip -r9 lambda.zip . > /dev/null 2>&1`);
+
+  if ([Prune.ask, Prune.yes].includes(prune as any)) {
+    console.log("Checking content size");
+    const diskUsage = await commandExec(`stat -f%z ${folder}/lambda.zip`);
+    const size = diskUsage.join(" ");
+    if (Number(size) > 70000000) {
+      const result = await promptUser(
+        "Lambda is too big, should we run 'npm prune --production'? (y/N)",
+      );
+      if (["y", "yes"].includes(result.toLowerCase())) {
+        await commandExec(`npm prune --production`);
+        await cleanup(folder);
+        return zip(folder, Prune.no);
+      } else {
+        throw new Error("Too big");
+      }
+    } else {
+      console.log(`${size} <= 70000000`);
+    }
+  }
 }
 
 async function upload(folder: string, lambdaName: string, region?: string) {
