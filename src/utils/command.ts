@@ -6,6 +6,7 @@ import { FsCache } from "../services/fsCache";
 import { failSound, successSound } from "../actions/playSound";
 import { defer, settleDefferedPromises } from "./defer";
 import { toKebabCase } from "./string/prototype";
+import { cliError } from "./logger";
 
 export type ArgsOf<T extends Command> = ArgumentsCamelCase<
   Record<keyof ReturnType<T["builder"]>, string>
@@ -48,7 +49,7 @@ export abstract class Command {
     } catch (e) {
       this.playSound && defer(failSound());
       if (e instanceof MissingRequiredPositionalArg) {
-        console.error(e.message);
+        cliError(e.message);
       } else {
         error = e instanceof Error ? e : new Error("Unknown error");
         responseCode = 1;
@@ -58,7 +59,7 @@ export abstract class Command {
     }
 
     if (responseCode !== 0 && error) {
-      console.error(error);
+      cliError(error);
       yargs.exit(responseCode, error);
     } else {
       return;
