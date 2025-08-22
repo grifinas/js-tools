@@ -1,7 +1,7 @@
 import chalk from "chalk";
 
 export function cliInfo(...args: unknown[]): void {
-  console.log(chalk.green(...args));
+  console.log(chalk.cyan(...args));
 }
 
 export function cliWarn(...args: unknown[]): void {
