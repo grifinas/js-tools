@@ -4,6 +4,8 @@ import { getAwsPackageInfo } from "../actions/getAwsPackageInfo";
 import { commandExec } from "../utils/exec";
 import { listDir } from "../utils/fs/list-dir";
 import path from "path";
+import { PackageJson } from "../actions/getPackageJson";
+import { cliInfo } from "../utils/logger";
 
 @bindCommand("cr [lambda-name] creates cr from the current project")
 export class Cr extends Command {
@@ -26,6 +28,12 @@ export class Cr extends Command {
         default: "mainline",
         alias: "d",
         description: "Destination branch in code.amazon.com",
+      }),
+      "no-guard": option({
+        boolean: true,
+        default: false,
+        alias: "g",
+        description: "Disable guard checks",
       }),
     };
   }
@@ -50,6 +58,12 @@ export class Cr extends Command {
       if (log === rhs) {
         include.push(pkg);
       }
+    }
+
+    if (!args.noGuard) {
+      await Promise.all(
+        include.map((pkg) => this.testGuard(path.join(sourcesDir, pkg), args)),
+      );
     }
 
     const command = `cr -i ${include.join(",")} ${this.getReview(
@@ -87,5 +101,33 @@ export class Cr extends Command {
     }
 
     throw new Error(`Failed to parse update arg: ${update}`);
+  }
+
+  async testGuard(pkg: string, args: ArgsOf<this>) {
+    const [startPackageJson, endPackageJson] = await Promise.all([
+      commandExec(
+        `cd ${pkg} && git show HEAD~${args.offset + 1}:package.json`,
+        { noecho: true, quiet: true },
+      ),
+      commandExec(`cd ${pkg} && git show HEAD:package.json`, {
+        noecho: true,
+        quiet: true,
+      }),
+    ]);
+    const start = new PackageJson(pkg, startPackageJson.join(""));
+    const end = new PackageJson(pkg, endPackageJson.join(""));
+
+    if (start.scripts.test !== end.scripts.test) {
+      if (
+        end.scripts.test.startsWith("exit") ||
+        end.scripts.test.startsWith("echo")
+      ) {
+        throw new Error(
+          `In ${pkg} commiting broken test script: \nExpected: ${start.scripts.test}\nFound:    ${end.scripts.test}`,
+        );
+      }
+    }
+
+    cliInfo(`${pkg} passed test guard`);
   }
 }
