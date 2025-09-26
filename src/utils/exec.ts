@@ -1,6 +1,7 @@
 import { exec } from "child_process";
 import chalk from "chalk";
 import { ExecError } from "./errors";
+import { cliError } from "./logger";
 
 interface CommandOptions {
   noecho: boolean;
@@ -32,7 +33,7 @@ export function commandExec(
       resolve(results);
     });
     process.on("error", (err) => {
-      options.quiet || console.log(chalk.bgRed(err.message));
+      options.quiet || cliError(err.message);
       reject(err);
     });
   });

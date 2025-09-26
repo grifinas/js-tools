@@ -1,6 +1,6 @@
 import { ArgsOf, bindCommand, Command } from "../utils/command";
 import { getAwsArtifactDir } from "../actions/getAwsArtifactDir";
-import { rm } from "fs/promises";
+import fs, { rm } from "fs/promises";
 import { option, withStage } from "../utils/stage";
 import { commandExec } from "../utils/exec";
 import { adaAuth } from "../actions/adaAuth";
@@ -8,6 +8,15 @@ import { getAwsLambdaTransform } from "../actions/getAwsLambdaTransform";
 import { getLambdaNames } from "../actions/getLambdaNames";
 import * as path from "path";
 import { promptUser } from "../actions/prompt-user";
+import { cliInfo, cliWarn } from "../utils/logger";
+import {
+  UpdateFunctionCodeCommand,
+  ListFunctionsCommand,
+  LambdaClient,
+  ResourceNotFoundException,
+} from "@aws-sdk/client-lambda";
+import { inferOptionOrAsk } from "../actions/inferOptionOrAsk";
+import { fromIni } from "@aws-sdk/credential-providers";
 
 const Prune = {
   yes: "yes",
@@ -52,7 +61,7 @@ export class UpdateCode extends Command {
       prune: option({
         string: true,
         choices: PRUNE_OPTIONS,
-        default: "ask",
+        default: Prune.ask,
         description: "Should we run npm prune if zip file size is too big.",
       }),
     });
@@ -86,7 +95,7 @@ export class UpdateCode extends Command {
 
   async getLambdaName(args: ArgsOf<this>): Promise<string> {
     if (args.file) {
-      console.info("Resolving lambda name from file");
+      cliInfo("Resolving lambda name from file");
       const name = path.parse(args.file).name.toLowerCase();
       const names = await getLambdaNames();
       const foundNames = names.filter((n) => n.toLowerCase().includes(name));
@@ -110,11 +119,11 @@ export class UpdateCode extends Command {
 async function build(build: string): Promise<void> {
   switch (build) {
     case "brazil":
-      console.log("building");
+      cliInfo("building");
       await commandExec("brazil-build release");
       break;
     case "npm":
-      console.log("building");
+      cliInfo("building");
       await commandExec("npm run build");
       break;
     case "none":
@@ -123,7 +132,7 @@ async function build(build: string): Promise<void> {
 }
 
 async function zip(folder: string, prune: string) {
-  console.log(`Zipping content ${folder}`);
+  cliInfo(`Zipping content ${folder}`);
 
   if (prune === Prune.always) {
     await commandExec(`npm prune --production`);
@@ -131,9 +140,11 @@ async function zip(folder: string, prune: string) {
   await commandExec(`cd ${folder} && zip -r9 lambda.zip . > /dev/null 2>&1`);
 
   if ([Prune.ask, Prune.yes].includes(prune as any)) {
-    console.log("Checking content size");
-    const diskUsage = await commandExec(`stat -f%z ${folder}/lambda.zip`);
-    const size = diskUsage.join(" ");
+    cliInfo("Checking content size");
+    const diskUsage = await commandExec(`stat -f%z ${folder}/lambda.zip`, {
+      quiet: true,
+    });
+    const size = diskUsage.join(" ").trim();
     if (Number(size) > 70000000) {
       const result = await promptUser(
         "Lambda is too big, should we run 'npm prune --production'? (y/N)",
@@ -146,24 +157,40 @@ async function zip(folder: string, prune: string) {
         throw new Error("Too big");
       }
     } else {
-      console.log(`${size} <= 70000000`);
+      cliInfo(`Acceptable zip size: ${size} <= 70000000`);
     }
   }
 }
 
 async function upload(folder: string, lambdaName: string, region?: string) {
-  console.log(`Uploading content`);
+  cliInfo(`Uploading content`);
   await adaAuth();
 
-  await commandExec(
-    `cd ${folder} && aws lambda update-function-code --function-name ${lambdaName} ${
-      region ? `--region ${region}` : ""
-    } --zip-file fileb://lambda.zip`,
-    { quiet: true },
-  );
+  const client = new LambdaClient({
+    credentials: fromIni(),
+    region,
+  });
+  try {
+    await client.send(
+      new UpdateFunctionCodeCommand({
+        FunctionName: lambdaName,
+        ZipFile: await fs.readFile(path.join(folder, "lambda.zip")),
+      }),
+    );
+  } catch (error) {
+    if (error instanceof ResourceNotFoundException) {
+      cliWarn(`Lambda ${lambdaName} not found, trying to infer what You meant`);
+      const result = await client.send(new ListFunctionsCommand());
+      const options: string[] =
+        result.Functions?.map((fn) => fn.FunctionName || "") || [];
+      const newLambdaFunction = await inferOptionOrAsk(lambdaName, options);
+      if (newLambdaFunction) return upload(folder, newLambdaFunction, region);
+    }
+    throw error;
+  }
 }
 
 async function cleanup(folder: string) {
-  console.log("removing lambda.zip");
+  cliInfo("removing lambda.zip");
   await rm(`${folder}/lambda.zip`);
 }

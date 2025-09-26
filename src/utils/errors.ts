@@ -10,4 +10,8 @@ export class ExecError extends Error {
   ) {
     super(message);
   }
+
+  toString() {
+    return `Command Execution error: ${this.message}. Exit code: ${this.code}.`;
+  }
 }

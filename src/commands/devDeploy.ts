@@ -1,11 +1,12 @@
 import { ArgsOf, bindCommand, Command } from "../utils/command";
-import { getStage, option, withStage } from "../utils/stage";
+import { option, withStage } from "../utils/stage";
 import { commandExec } from "../utils/exec";
 import { adaAuth } from "../actions/adaAuth";
 import { lexStackName } from "../actions/lexStackName";
 import { tokenize } from "../actions/tokenize";
 import { listStacks, ListStacksError } from "../actions/listStacks";
 import { cliError, cliInfo } from "../utils/logger";
+import { inferOption } from "../actions/inferOption";
 
 @bindCommand("dev-deploy [stack] deploys specified stack to AWS")
 export class DevDeploy extends Command {
@@ -118,38 +119,12 @@ export class DevDeploy extends Command {
   }
 }
 
-function matchStackName(
-  name: string,
-  availableStacks: string[],
-  iteration = 1,
-): string {
-  const lowercaseName = name.toLowerCase();
-  let matching: string[] = [];
-  switch (iteration) {
-    case 1:
-      matching = availableStacks.filter((s) =>
-        s.toLowerCase().includes(lowercaseName),
-      );
-      break;
-    case 2:
-      matching = availableStacks.filter((s) => s.includes(getStage()));
-      break;
+function matchStackName(name: string, availableStacks: string[]): string {
+  const { result, narrowedOptions } = inferOption(name, availableStacks);
+  if (!result) {
+    cliError(`No stack found matching: "${name}"`);
+    cliInfo("Possible options:");
+    console.log(narrowedOptions);
   }
-
-  const exactMatch = matching.find((m) => m === lowercaseName);
-  if (exactMatch) {
-    cliInfo(`Found exact match: ${exactMatch}`);
-    return exactMatch;
-  }
-
-  switch (matching.length) {
-    case 0:
-      cliError(`No stack found matching: "${name}"`);
-      return "";
-    case 1:
-      return matching[0];
-    default:
-      console.log("Matching stacks for", name, "--", matching);
-      return matchStackName(name, matching, iteration + 1);
-  }
+  return result || "";
 }

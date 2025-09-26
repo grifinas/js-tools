@@ -2,6 +2,7 @@ import { ArgsOf, bindCommand, Command } from "../utils/command";
 import { option } from "../utils/stage";
 import { getAwsProjectConfig } from "../actions/getAwsProjectConfig";
 import * as path from "path";
+import { cliInfo } from "../utils/logger";
 
 @bindCommand("In Code Amazon")
 export class InCodeAmazon extends Command {
@@ -26,6 +27,7 @@ export class InCodeAmazon extends Command {
       true,
     );
     const packageName = Object.keys(config)[0];
+    cliInfo("Package name", packageName);
     const pathToFile = file.replace(path.dirname(configPath), "");
     const lineString = line ? `#L${line}` : "";
     const url = `https://code.amazon.com/packages/${packageName}/blobs/mainline/--${pathToFile}${lineString}`;
