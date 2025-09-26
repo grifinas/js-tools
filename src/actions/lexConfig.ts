@@ -3,19 +3,24 @@ import { TokenStream } from "./tokenize";
 export function lexConfig(tokens: TokenStream, onlyRoot = false): object {
   tokens.assert("WORD", "package");
   tokens.assertNext("DOT");
-  const rootName = tokens.next();
-  tokens.assert("WORD");
+  let rootName = "";
+  let next = tokens.next();
+  while (["WORD", "NUMBER"].includes(next.type)) {
+    rootName += next.value;
+    next = tokens.next();
+  }
+  tokens.prev();
   tokens.assertNext("EQUALS");
   tokens.assertNext("BRACE", "{");
 
   if (onlyRoot) {
     return {
-      [rootName.value]: {},
+      [rootName]: {},
     };
   }
 
   return {
-    [rootName.value]: parseObject(tokens),
+    [rootName]: parseObject(tokens),
   };
 }
 
