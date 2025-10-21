@@ -8,10 +8,16 @@ interface AdaAuthCache {
   account: string;
   iat: number;
 }
+interface Options {
+  force?: boolean;
+}
 
-export async function adaAuth(account?: string): Promise<void> {
+export async function adaAuth(
+  account?: string,
+  options: Options = {},
+): Promise<void> {
   account = account || getAwsAccount();
-  if (await isAlreadyAuthenticated(account)) {
+  if (!options.force && (await isAlreadyAuthenticated(account))) {
     console.log("Already authenticated");
     return;
   }

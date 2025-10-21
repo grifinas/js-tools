@@ -13,12 +13,20 @@ export class AdaAuth extends Command {
         description:
           "Account ID to auth as, by default gets the account from accounts.json file",
       }),
+      force: option({
+        boolean: true,
+        alias: "f",
+        description: "Force authentication without checking cache",
+        default: false,
+      }),
     });
   }
 
   async handler(args: ArgsOf<this>): Promise<void> {
     const account = args.account || getAwsAccount();
 
-    await adaAuth(account);
+    await adaAuth(account, {
+      force: Boolean(args.force),
+    });
   }
 }
