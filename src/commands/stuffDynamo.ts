@@ -1,14 +1,19 @@
 import { ArgsOf, bindCommand, Command } from "../utils/command";
 import { option, withStage } from "../utils/stage";
-import { commandExec } from "../utils/exec";
 import { adaAuth } from "../actions/adaAuth";
-import { writeFile } from "fs/promises";
-import { v4 } from "uuid";
 import { chunk } from "lodash";
+import { fromIni } from "@aws-sdk/credential-providers";
+import {
+  AttributeValue,
+  DynamoDBClient,
+  PutItemCommand,
+} from "@aws-sdk/client-dynamodb";
 
 let largestTimestamp = 0;
 @bindCommand("stuff DynamoDB with data")
 export class StuffDynamo extends Command {
+  private dynamoDbClient: DynamoDBClient | null = null;
+
   builder() {
     return withStage({
       count: option({
@@ -26,6 +31,39 @@ export class StuffDynamo extends Command {
 
   async handler(args: ArgsOf<this>) {
     await adaAuth();
+    this.dynamoDbClient = new DynamoDBClient({
+      credentials: fromIni({ profile: "default" }),
+    });
+
+    // await this.chunky(args);
+    await this.straight();
+
+    console.log("DONE");
+  }
+
+  async straight() {
+    const usernames: string[] = [
+      "dylhjohn",
+      "cathrowa",
+      "gibmat",
+      "sqlkavi",
+      "spallchr",
+      "isaacjs",
+    ];
+
+    for (let username of usernames) {
+      const item = this.generateAbTestResult(username);
+      console.log("Putting", item);
+      await this.dynamoDbClient!.send(
+        new PutItemCommand({
+          Item: item,
+          TableName: "AbResults",
+        }),
+      );
+    }
+  }
+
+  async chunky(args: ArgsOf<this>) {
     const { count } = args;
 
     const range = Array(Number(count))
@@ -39,16 +77,27 @@ export class StuffDynamo extends Command {
       await Promise.all(
         numbers.map(async (n, i) => {
           const item = this.generateItem(i);
-          await writeFile(`item${i}.json`, JSON.stringify(item));
-          await commandExec(
-            `aws dynamodb put-item --table-name UserActions --item file://item${i}.json`,
-            { noecho: true },
+          await this.dynamoDbClient!.send(
+            new PutItemCommand({
+              Item: item,
+              TableName: "AbResults",
+            }),
           );
         }),
       );
     }
+  }
 
-    console.log("DONE");
+  generateAbTestResult(username: string): Record<string, AttributeValue> {
+    return {
+      serviceUsernamePK: {
+        S: `AccessLevels#${username}`,
+      },
+      configName: {
+        S: "accessLevelsStageTwo",
+      },
+      result: { S: "on" },
+    };
   }
 
   generateItem(i: number): Record<string, any> {
@@ -58,32 +107,14 @@ export class StuffDynamo extends Command {
     largestTimestamp = timestamp;
 
     return {
-      actionName: {
-        S: "Set Input Mask",
+      serviceUsernamePK: {
+        S: "AccessLevels#koiiryna",
       },
-      timestamp: {
-        S: timestamp.toString(),
+      configName: {
+        S: "accessLevelsStageTwo",
       },
-      actionId: {
-        S: v4(),
-      },
-      deviceName: {
-        S: "SEA74-1F SEC OFC BYPASS EDR",
-      },
-      deviceSource: {
-        S: "onguard",
-      },
-      isMasked: {
-        BOOL: true,
-      },
-      requestedBy: {
-        S: ["paulminy", "kdomanta", "pinovica"][i % 3],
-      },
-      siteName: {
-        S: "SEA74",
-      },
-      siteRegion: {
-        S: "AMER",
+      result: {
+        S: "on",
       },
     };
   }
