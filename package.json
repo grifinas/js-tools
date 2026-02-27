@@ -9,10 +9,10 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "link": "yarn link --global",
+    "link": "npm link --local",
     "permissions": "chmod +x dist/index.js",
     "autocomplete": "jst .zshrc >> ~/.zshrc",
-    "setup": "yarn build && yarn run link && yarn run permissions && yarn run autocomplete",
+    "setup": "npm build && npm run link && npm run permissions && npm run autocomplete",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "prettier --write \"src/**/*.+(ts|tsx|json)\""
   },

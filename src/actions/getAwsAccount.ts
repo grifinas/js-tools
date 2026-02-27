@@ -1,10 +1,12 @@
-import * as map from "../accounts.json";
+// import * as map from "../accounts.json";
 import process from "process";
 import { getStage } from "../utils/stage";
 
 export function getAwsAccount(stage?: string) {
   const dir = process.cwd();
   const selectedStage = stage || getStage();
+
+  const map: Record<string, Record<string, string>> = {};
 
   const tool = Object.keys(map).find((tool) =>
     dir.includes(tool),

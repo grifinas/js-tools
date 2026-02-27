@@ -16,25 +16,25 @@ export async function adaAuth(
   account?: string,
   options: Options = {},
 ): Promise<void> {
-  account = account || getAwsAccount();
-  if (!options.force && (await isAlreadyAuthenticated(account))) {
+  const _account = account || getAwsAccount();
+  if (!options.force && (await isAlreadyAuthenticated(_account))) {
     console.log("Already authenticated");
     return;
   }
 
-  if (!account.match(/[0-9]{12}/)) {
+  if (!_account.match(/[0-9]{12}/)) {
     throw new InvalidAwsAccountError(
-      `account number: "${account}" does not match expected format of 12 numbers. E.g. 955051460414`,
+      `account number: "${_account}" does not match expected format of 12 numbers. E.g. 955051460414`,
     );
   }
 
   await commandExec(
-    `ada credentials update --account=${account} --provider=conduit --role=IibsAdminAccess-DO-NOT-DELETE --once`,
+    `ada credentials update --account=${_account} --provider=conduit --role=IibsAdminAccess-DO-NOT-DELETE --once`,
   );
 
   const cache = await FsCache.instance();
   cache.set("adaauth", {
-    account,
+    account: _account,
     iat: new Date().getTime(),
   } as AdaAuthCache);
 }
