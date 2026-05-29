@@ -131,7 +131,7 @@ async function build(build: string): Promise<void> {
   }
 }
 
-async function zip(folder: string, prune: string) {
+async function zip(folder: string, prune: string): Promise<void> {
   cliInfo(`Zipping content ${folder}`);
 
   if (prune === Prune.always) {
@@ -162,7 +162,7 @@ async function zip(folder: string, prune: string) {
   }
 }
 
-async function upload(folder: string, lambdaName: string, region?: string) {
+async function upload(folder: string, lambdaName: string, region?: string): Promise<void> {
   cliInfo(`Uploading content`);
   await adaAuth();
 

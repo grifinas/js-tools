@@ -1,17 +1,47 @@
 import { commandExec } from "../utils/exec";
 import { listDir } from "../utils/fs/list-dir";
 
-const sounds = listDir("/System/Library/Sounds");
+enum Sounds {
+  Success,
+  Fail
+}
+
+type OsSoundConfiguration = {
+  soundPath: string;
+  soundMap: Record<Sounds, string>;
+  playCommand: (name: string, time: number) => string;
+}
+
+type OsEnv = Record<string, OsSoundConfiguration>;
+
+const env: OsEnv = {
+  darwin: {
+    soundPath: '/System/Library/Sounds',
+    soundMap: {
+      [Sounds.Success]: 'Funk.aiff',
+      [Sounds.Fail]: 'Sosumi.aiff',
+    },
+    playCommand: (name, time) => `afplay /System/Library/Sounds/${name} -t ${time}`
+  },
+}
+
+const sounds: string[] = [];
 
 export async function playSound(
-  name: string,
+  name: Sounds,
   noecho: boolean = false,
   time: number = 999,
 ) {
   try {
-    const available = await sounds;
-    if (available.includes(name)) {
-      await commandExec(`afplay /System/Library/Sounds/${name} -t ${time}`, {
+    const {soundPath, playCommand, soundMap} = env[process.platform];
+    if (!sounds.length) {
+      sounds.push(...await listDir(soundPath));
+    }
+    const sound = soundMap[name];
+
+    if (sounds.includes(sound)) {
+      const cmd = playCommand(sound, time);
+      await commandExec(cmd, {
         noecho,
       });
     } else {
@@ -23,9 +53,9 @@ export async function playSound(
 }
 
 export async function successSound() {
-  playSound("Funk.aiff", true, 0.25);
+  playSound(Sounds.Success, true, 0.25);
 }
 
 export async function failSound() {
-  playSound("Sosumi.aiff", true, 0.25);
+  playSound(Sounds.Fail, true, 0.25);
 }
