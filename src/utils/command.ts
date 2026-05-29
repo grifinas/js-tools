@@ -1,6 +1,7 @@
 import yargs, { ArgumentsCamelCase, Options } from "yargs";
 import { Newable } from "./newable";
 import { setStage, stageOption } from "./stage";
+import { setVerbosity, Verbosity, verbosityOption } from "./verbosity";
 import { MissingRequiredPositionalArg } from "./errors";
 import { FsCache } from "../services/fsCache";
 import { failSound, successSound } from "../actions/playSound";
@@ -29,6 +30,9 @@ export abstract class Command {
     if (this.builder()["stage"] === stageOption) {
       //@ts-ignore
       setStage(args.stage || "beta");
+    }
+    if (this.builder()["verbosity"] === verbosityOption) {
+      setVerbosity((args.verbosity || "none") as Verbosity);
     }
 
     let responseCode: number = 0;

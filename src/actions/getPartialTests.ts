@@ -1,38 +1,54 @@
 import { getDependencyTree } from "./getDependencyTree";
 import { commandExec } from "../utils/exec";
-import * as fs from "fs";
+import { cliDebug } from "../utils/logger";
 import * as path from "path";
+import { listDir } from "../utils/fs/list-dir";
+
+const DEFAULT_TEST_EXTENSIONS = [".spec.", ".test.", ".it.", ".e2e."];
 
 export async function getPartialTests(
   projectPath: string,
-  verbose: boolean = false,
+  testExtensions: string[] = DEFAULT_TEST_EXTENSIONS,
 ): Promise<string[]> {
-  const dependencyTree = getDependencyTree(projectPath);
+  const effectiveTestExtensions = testExtensions.length
+    ? testExtensions
+    : DEFAULT_TEST_EXTENSIONS;
+  const dependencyTree = toRelativeDependencyTree(projectPath, getDependencyTree(projectPath));
   const changedFiles = await getChangedFiles(projectPath);
-  const impactedFiles = getImpactedFiles(dependencyTree, changedFiles, verbose);
+  const testDirListings = new Map<string, Promise<string[]>>();
   const tests = new Set<string>();
 
-  verboseLog(verbose, "git diff changed files:");
+  cliDebug("git diff changed files:");
   for (const changedFile of changedFiles) {
-    verboseLog(verbose, `  ${changedFile}`);
+    cliDebug(`  ${changedFile}`);
   }
 
-  for (const filePath of impactedFiles) {
-    const testPath = getMirroredTestPath(projectPath, filePath);
+  for (const filePath of getChangedTestFiles(changedFiles)) {
+    cliDebug(`test selected: ${filePath} was changed directly`);
+    tests.add(path.resolve(projectPath, filePath));
+  }
 
-    if (testPath && fs.existsSync(testPath)) {
-      verboseLog(verbose, `test selected: ${testPath} mirrors impacted file ${filePath}`);
-      tests.add(testPath);
-    } else if (testPath) {
-      verboseLog(verbose, `test skipped: ${testPath} does not exist for impacted file ${filePath}`);
+  for (const filePath of getImpactedFiles(dependencyTree, changedFiles)) {
+    const testPaths = await getMirroredTestPaths(
+      projectPath,
+      filePath,
+      effectiveTestExtensions,
+      testDirListings,
+    );
+
+    for (const testPath of testPaths) {
+      cliDebug(
+        `test selected: ${testPath} mirrors impacted file ${filePath}`,
+      );
+      tests.add(path.resolve(projectPath, testPath));
     }
   }
 
   const result = Array.from(tests).sort();
 
-  verboseLog(verbose, "final tests:");
+  cliDebug("final tests:");
   for (const testPath of result) {
-    verboseLog(verbose, `  ${testPath}`);
+    cliDebug(`  ${path.relative(projectPath, testPath)}`);
   }
 
   return result;
@@ -48,18 +64,16 @@ async function getChangedFiles(projectPath: string): Promise<string[]> {
     .join("")
     .split("\n")
     .map((filePath) => filePath.trim())
-    .filter(Boolean)
-    .map((filePath) => path.resolve(projectPath, filePath));
+    .filter(Boolean);
 }
 
 function getImpactedFiles(
   dependencyTree: Record<string, { path: string; dependency: string }[]>,
   changedFiles: string[],
-  verbose: boolean,
 ): string[] {
   const impactingTree = invertDependencyTree(dependencyTree);
   const impactedFiles = new Set<string>();
-  const filesToVisit = [...changedFiles];
+  const filesToVisit = changedFiles.filter(isSourceFile);
 
   while (filesToVisit.length > 0) {
     const filePath = filesToVisit.pop();
@@ -69,11 +83,15 @@ function getImpactedFiles(
     }
 
     impactedFiles.add(filePath);
-    verboseLog(verbose, `impacted: ${filePath}`);
+    cliDebug(`impacted: ${filePath}`);
 
     for (const impact of impactingTree[filePath] || []) {
-      verboseLog(
-        verbose,
+      if (!isSourceFile(impact.filePath)) {
+        cliDebug(`  skipped ${impact.filePath} because it is not a source file`);
+        continue;
+      }
+
+      cliDebug(
         `  ${impact.filePath} is impacted because it imports ${impact.dependency} from ${filePath}`,
       );
       filesToVisit.push(impact.filePath);
@@ -106,12 +124,16 @@ interface Impact {
   dependency: string;
 }
 
-function getMirroredTestPath(projectPath: string, filePath: string): string | null {
-  const relativePath = path.relative(projectPath, filePath);
-  const pathParts = relativePath.split(path.sep);
+async function getMirroredTestPaths(
+  projectPath: string,
+  filePath: string,
+  testExtensions: string[],
+  testDirListings: Map<string, Promise<string[]>>,
+): Promise<string[]> {
+  const pathParts = filePath.split(path.sep);
 
   if (pathParts[0] === "test") {
-    return filePath;
+    return [filePath];
   }
 
   if (pathParts[0] === "src") {
@@ -122,14 +144,70 @@ function getMirroredTestPath(projectPath: string, filePath: string): string | nu
 
   const extension = path.extname(pathParts[pathParts.length - 1]);
   const basename = path.basename(pathParts[pathParts.length - 1], extension);
+  const testDir = path.join(...pathParts.slice(0, -1));
+  const testFileNames = await listTestDir(projectPath, testDir, testDirListings);
+  const matchingTestFileNames = testFileNames.filter((testFileName) =>
+    testExtensions.some(
+      (testExtension) =>
+        testFileName === `${basename}${normalizeTestExtension(testExtension)}${extension}`,
+    ),
+  );
 
-  pathParts[pathParts.length - 1] = `${basename}.test${extension}`;
+  if (matchingTestFileNames.length === 0) {
+    cliDebug(
+      `test skipped: no mirrored tests found in ${testDir} for ${filePath}`,
+    );
+  }
 
-  return path.resolve(projectPath, ...pathParts);
+  return matchingTestFileNames.map((testFileName) => path.join(testDir, testFileName));
 }
 
-function verboseLog(verbose: boolean, message: string): void {
-  if (verbose) {
-    console.log(message);
+function getChangedTestFiles(changedFiles: string[]): string[] {
+  return changedFiles.filter(isTestFile);
+}
+
+function isSourceFile(filePath: string): boolean {
+  return filePath.split(path.sep)[0] === "src";
+}
+
+function isTestFile(filePath: string): boolean {
+  return filePath.split(path.sep)[0] === "test";
+}
+
+function normalizeTestExtension(testExtension: string): string {
+  return testExtension.endsWith(".") ? testExtension.slice(0, -1) : testExtension;
+}
+
+async function listTestDir(
+  projectPath: string,
+  testDir: string,
+  testDirListings: Map<string, Promise<string[]>>,
+): Promise<string[]> {
+  if (!testDirListings.has(testDir)) {
+    testDirListings.set(
+      testDir,
+      listDir(path.resolve(projectPath, testDir)).catch(() => {
+        cliDebug(`test skipped: unable to list ${testDir}`);
+
+        return [];
+      }),
+    );
   }
+
+  return testDirListings.get(testDir)!;
+}
+
+function toRelativeDependencyTree(
+  projectPath: string,
+  dependencyTree: Record<string, { path: string; dependency: string }[]>,
+): Record<string, { path: string; dependency: string }[]> {
+  return Object.fromEntries(
+    Object.entries(dependencyTree).map(([filePath, dependencies]) => [
+      path.relative(projectPath, filePath),
+      dependencies.map((dependency) => ({
+        ...dependency,
+        path: path.relative(projectPath, dependency.path),
+      })),
+    ]),
+  );
 }

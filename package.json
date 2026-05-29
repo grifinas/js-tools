@@ -9,6 +9,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "build:watch": "tsc -p tsconfig.json --watch",
     "link": "npm link --local",
     "permissions": "chmod +x dist/index.js",
     "autocomplete": "jst .zshrc >> ~/.zshrc",
