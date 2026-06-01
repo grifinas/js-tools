@@ -3,11 +3,10 @@ import { getPartialTests } from "../actions/getPartialTests";
 import { option } from "../utils/stage";
 import { withVerbosity } from "../utils/verbosity";
 import * as path from "path";
-import { cliInfo } from '../utils/logger';
-import { commandExec, spawnCommand } from '../utils/exec';
-import { spawn } from 'child_process';
+import { spawnCommand } from '../utils/exec';
 
 const DEFAULT_TEST_EXTENSIONS = [".spec.", ".test.", ".it.", ".e2e."];
+const PARTIAL_TESTS_REPORTER_PATH = path.resolve(__dirname, "../reporters/partial-tests.js");
 
 @bindCommand("Gets tests to run of impacted dependencies in a typescript application")
 export class GetPartialTests extends Command {
@@ -47,7 +46,7 @@ export class GetPartialTests extends Command {
     const tests = await getPartialTests(projectPath, { testExtensions, mirror: Boolean(args.mirror) });
 
     if (args.run) {
-      spawnCommand(`node`, [`${projectPath}/node_modules/jest/bin/jest.js`, '--runInBand', '--reporters=summary', `--runTestsByPath`, ...tests]);
+      spawnCommand(`node`, [`${projectPath}/node_modules/jest/bin/jest.js`, '--runInBand', `--reporters=${PARTIAL_TESTS_REPORTER_PATH}`, `--runTestsByPath`, ...tests]);
     } else {
       return tests.join(" ");
     }
