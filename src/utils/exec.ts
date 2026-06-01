@@ -1,4 +1,4 @@
-import { exec } from "child_process";
+import { exec, spawn } from "child_process";
 import chalk from "chalk";
 import { ExecError } from "./errors";
 import { cliError } from "./logger";
@@ -8,6 +8,7 @@ interface CommandOptions {
   quiet: boolean;
   dry: boolean;
 }
+
 export function commandExec(
   command: string,
   options: Partial<CommandOptions> = {},
@@ -18,6 +19,7 @@ export function commandExec(
     if (options.dry) {
       return [];
     }
+
     const process = exec(command);
     process.stdout?.on("data", (data) => {
       results.push(data);
@@ -36,5 +38,18 @@ export function commandExec(
       options.quiet || cliError(err.message);
       reject(err);
     });
+  });
+}
+
+export function spawnCommand(command: string, args: string[], options: Partial<CommandOptions> = {}) {
+  options.noecho || console.log(chalk.green(command));
+  if (options.dry) {
+    return [];
+  }
+
+  spawn(command, args, {
+    //@ts-ignore
+    stdio: 'inherit',
+    detached: true,
   });
 }

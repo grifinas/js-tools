@@ -8,8 +8,9 @@ let verbosity: Verbosity = "none";
 export const verbosityOption = option({
   choices: ["none", "error", "info", "debug"],
   type: "string",
-  default: "none",
+  default: "info",
   describe: "Verbosity level",
+  alias: 'v'
 });
 
 export function setVerbosity(value: Verbosity) {

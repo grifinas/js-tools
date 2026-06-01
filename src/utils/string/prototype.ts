@@ -5,6 +5,8 @@ declare global {
     canonical(replaceWith?: string): string;
     substringFrom(needle: string): string;
     toKebabCase(): string;
+    substringFrom(needle: string): string;
+    lastSubstringFrom(needle: string): string;
   }
 }
 
@@ -21,6 +23,15 @@ Object.defineProperty(String.prototype, "canonical", {
   configurable: false,
 });
 Object.defineProperty(String.prototype, "substringFrom", {
+  value: function (this: string, needle: string) {
+    const index = this.indexOf(needle);
+    if (index === -1) return "";
+    return this.substring(index);
+  },
+  writable: false,
+  configurable: false,
+});
+Object.defineProperty(String.prototype, "lastSubstringFrom", {
   value: function (this: string, needle: string) {
     const index = this.indexOf(needle);
     if (index === -1) return "";
